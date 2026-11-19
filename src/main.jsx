@@ -140,7 +140,8 @@ function RadarChart({ values }) {
 }
 
 function App() {
-  const [screen, setScreen] = useState('home');
+  const [profile, setProfile] = useState(() => getStored('drivequest-profile', null));
+  const [screen, setScreen] = useState(() => getStored('drivequest-profile', null) ? 'home' : 'signup');
   const [progress, setProgress] = useState(() => getStored('drivequest-progress', defaultProgress));
   const [reviewIds, setReviewIds] = useState(() => getStored('drivequest-review', ['r06', 'a04', 's02']));
   const [xp, setXp] = useState(() => getStored('drivequest-xp', 460));
@@ -231,7 +232,14 @@ function App() {
   }
 
   function goHome() { setScreen('home'); setSelectedOption(null); setShowFeedback(false); }
+  function completeSignup(nextProfile) {
+    setProfile(nextProfile);
+    localStorage.setItem('drivequest-profile', JSON.stringify(nextProfile));
+    setScreen('home');
+  }
   const timerLabel = `${String(Math.floor(examTime / 60)).padStart(2, '0')}:${String(examTime % 60).padStart(2, '0')}`;
+
+  if (!profile) return <SignUp onComplete={completeSignup} />;
 
   return <div className="app-shell">
     <header className="topbar">
@@ -249,6 +257,25 @@ function App() {
 
     {screen !== 'exam' && screen !== 'training' && <nav className="bottom-nav"><button className={screen === 'home' ? 'active' : ''} onClick={goHome}><span>⌂</span>Parcours</button><button className={screen === 'results' ? 'active' : ''} onClick={() => setScreen('results')}><span>◈</span>Résultats</button><button className={screen === 'review' ? 'active' : ''} onClick={() => setScreen('review')}><span>↺</span>Révision{reviewQuestions.length > 0 && <b>{reviewQuestions.length}</b>}</button></nav>}
   </div>;
+}
+
+function SignUp({ onComplete }) {
+  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
+  const [error, setError] = useState('');
+  function update(field, value) { setForm((previous) => ({ ...previous, [field]: value })); }
+  function submit(event) {
+    event.preventDefault();
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim() || !form.email.trim()) {
+      setError('Tous les champs sont nécessaires pour créer ton profil.');
+      return;
+    }
+    if (!/^\\S+@\\S+\\.\\S+$/.test(form.email)) {
+      setError('Vérifie le format de ton adresse e-mail.');
+      return;
+    }
+    onComplete({ ...form, createdAt: new Date().toISOString() });
+  }
+  return <div className="signup-shell"><div className="signup-visual"><button className="brand signup-brand" onClick={() => window.location.reload()} aria-label="Recharger DriveQuest"><span className="brand-mark">D<span>Q</span></span><span>Drive<span>Quest</span></span></button><div className="signup-orbit signup-orbit-one" /><div className="signup-orbit signup-orbit-two" /><Mascot mood="excited" /><div className="signup-quote"><span>TON PERMIS.</span><strong>TON AVENTURE.</strong><p>Apprends à ton rythme, progresse à chaque réponse.</p></div></div><div className="signup-panel"><div className="signup-panel-inner"><span className="eyebrow">PREMIÈRE ÉTAPE</span><h1>Créons ton<br /><em>profil pilote.</em></h1><p className="signup-intro">Quelques informations pour personnaliser ton parcours DriveQuest.</p><form onSubmit={submit} className="signup-form"><div className="field-row"><label><span>Prénom</span><input value={form.firstName} onChange={(event) => update('firstName', event.target.value)} placeholder="Ex. Aïcha" autoComplete="given-name" /></label><label><span>Nom</span><input value={form.lastName} onChange={(event) => update('lastName', event.target.value)} placeholder="Ex. Houngbédji" autoComplete="family-name" /></label></div><label><span>Numéro de téléphone</span><input type="tel" value={form.phone} onChange={(event) => update('phone', event.target.value)} placeholder="Ex. +229 97 00 00 00" autoComplete="tel" /></label><label><span>Adresse e-mail</span><input type="email" value={form.email} onChange={(event) => update('email', event.target.value)} placeholder="toi@exemple.com" autoComplete="email" /></label>{error && <p className="signup-error" role="alert">{error}</p>}<button className="primary-btn signup-submit" type="submit">Commencer mon parcours <span>→</span></button></form><p className="privacy-note"><span>i</span> Tes informations sont enregistrées uniquement sur cet appareil dans cette version de démonstration. Aucun compte serveur ni envoi d’e-mail n’est encore activé.</p></div></div></div>;
 }
 
 function Home({ progress, masteryAverage, reviewQuestions, onChapter, onExam, onReview }) {
